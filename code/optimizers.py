@@ -32,4 +32,3 @@ class SGD(Optimizer):
     def _compute_step(self, globalg):
         step = -self.stepsize * globalg
         return step
-

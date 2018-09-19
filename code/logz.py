@@ -1,4 +1,4 @@
-# Code in this file is copied and adapted from 
+# Code in this file is copied and adapted from
 # https://github.com/berkeleydeeprlcourse
 
 import json
@@ -8,7 +8,7 @@ import json
 Some simple logging functionality, inspired by rllab's logging.
 Assumes that each diagnostic gets logged each iteration
 
-Call logz.configure_output_dir() to start logging to a 
+Call logz.configure_output_dir() to start logging to a
 tab-separated-values file (some_folder_name/log.txt)
 
 """
@@ -49,11 +49,12 @@ def configure_output_dir(d=None):
     G.first_row = True
     G.log_headers = []
     G.log_current_row = {}
-    
+
     G.output_dir = d or "/tmp/experiments/%i"%int(time.time())
     if not osp.exists(G.output_dir):
         os.makedirs(G.output_dir)
-    G.output_file = open(osp.join(G.output_dir, "log.txt"), 'w')
+    current_time = time.strftime("%Y%m%d-%H%M%S")
+    G.output_file = open(osp.join(G.output_dir, f"log_{current_time}.txt"), 'w')
     atexit.register(G.output_file.close)
     print(colorize("Logging data to %s"%G.output_file.name, 'green', bold=True))
 
@@ -69,7 +70,7 @@ def log_tabular(key, val):
     assert key not in G.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()"%key
     G.log_current_row[key] = val
 
-    
+
 def save_params(params):
     with open(osp.join(G.output_dir, "params.json"), 'w') as out:
         out.write(json.dumps(params, separators=(',\n','\t:\t'), sort_keys=True))
