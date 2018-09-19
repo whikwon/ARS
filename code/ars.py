@@ -350,8 +350,8 @@ class ARSLearner(object):
             print('Time to sync statistics:', t2 - t1)
 
             # record statistics every 10 iterations
-            if ((i + 1) % 1 == 0):
-                rewards = self.aggregate_rollouts(num_rollouts = 7, evaluate = True)
+            if ((i + 1) % 10 == 0):
+                rewards = self.aggregate_rollouts(num_rollouts = 100, evaluate = True)
                 self.save(i+1)
 
                 print(sorted(self.params.items()))
