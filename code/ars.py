@@ -429,7 +429,7 @@ if __name__ == '__main__':
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
     parser.add_argument('--restore', type=str, default=None)
 
-    ray.init("10.1.0.8:8787")
+    ray.init("10.0.1.8:8787")
 
     args = parser.parse_args()
     params = vars(args)
