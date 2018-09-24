@@ -212,6 +212,15 @@ class ARSLearner(object):
         else:
             raise NotImplementedError
 
+        # adjust shared table
+        if restore is not None:
+            remove_idx = []
+            for _ in range(self.resume_iter):
+                for worker in self.workers:
+                    idx, _ = ray.get(worker.get_delta.remote())
+                    remove_idx.append(idx)
+            print("REMOVED IDXS", remove_idx)
+
         # initialize optimization algorithm
         self.optimizer = optimizers.SGD(self.w_policy, self.step_size)
         print("Initialization of ARS complete.")
