@@ -52,13 +52,9 @@ class LinearPolicy(Policy):
         else:
             self.weights = np.zeros((self.ac_dim, self.ob_dim), dtype=np.float32)
 
-        self.bins = np.linspace(0, 1, 11)
-
     def act(self, ob):
         ob = self.observation_filter(ob, update=self.update_filter)
-        action = np.clip(np.dot(self.weights, ob), 0, 1)
-        action = np.digitize(action, self.bins, right=True) / 10
-        return action
+        return np.dot(self.weights, ob)
 
     def get_weights_plus_stats(self):
         mu, std = self.observation_filter.get_stats()

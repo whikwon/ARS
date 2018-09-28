@@ -141,6 +141,9 @@ class Worker(object):
         self.policy.observation_filter.sync(other)
         return
 
+    def get_delta(self):
+        return self.deltas.get_delta(self.policy_params['ob_dim']*self.policy_params['ac_dim'])
+
 
 class ARSLearner(object):
     """
@@ -360,18 +363,18 @@ class ARSLearner(object):
 
             # record statistics every 10 iterations
             if ((i + 1) % 10 == 0):
-                rewards = self.aggregate_rollouts(num_rollouts = 100, evaluate = True)
+#                rewards = self.aggregate_rollouts(num_rollouts = 100, evaluate = True)
                 self.save(i+1)
 
-                print(sorted(self.params.items()))
-                logz.log_tabular("Time", time.time() - start)
-                logz.log_tabular("Iteration", i + 1)
-                logz.log_tabular("AverageReward", np.mean(rewards))
-                logz.log_tabular("StdRewards", np.std(rewards))
-                logz.log_tabular("MaxRewardRollout", np.max(rewards))
-                logz.log_tabular("MinRewardRollout", np.min(rewards))
-                logz.log_tabular("timesteps", self.timesteps)
-                logz.dump_tabular()
+#                print(sorted(self.params.items()))
+#                logz.log_tabular("Time", time.time() - start)
+#                logz.log_tabular("Iteration", i + 1)
+#                logz.log_tabular("AverageReward", np.mean(rewards))
+#                logz.log_tabular("StdRewards", np.std(rewards))
+#                logz.log_tabular("MaxRewardRollout", np.max(rewards))
+#                logz.log_tabular("MinRewardRollout", np.min(rewards))
+#                logz.log_tabular("timesteps", self.timesteps)
+#                logz.dump_tabular()
         return
 
 def run_ars(params):
