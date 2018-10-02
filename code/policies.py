@@ -61,3 +61,24 @@ class LinearPolicy(Policy):
         aux = np.asarray([self.weights, mu, std])
         return aux
 
+
+class MLPPolicy(Policy):
+    """
+    Linear policy class that computes action as <w, ob>.
+    """
+
+    def __init__(self, policy_params, param_restore):
+        Policy.__init__(self, policy_params, param_restore)
+        if param_restore is not None:
+            self.weights = param_restore[0]
+            print("Pre-trained weights Restored")
+            self.observation_filter.sync(param_restore[1])
+            print("Observation filter Restored")
+        else:
+            self.weights = np.zeros((512, self.ac_dim+self.ob_dim), dtype=np.float32)
+
+    def act(self, ob):
+        ob = self.observation_filter(ob, update=self.update_filter)
+        weight1 = self.weights[:, :self.ob_dim]
+        weight2 = self.weights[:, self.ob_dim:]
+        return np.dot(np.dot(weight1, ob), weight2)

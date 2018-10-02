@@ -45,6 +45,9 @@ class Worker(object):
         self.policy_params = policy_params
         if policy_params['type'] == 'linear':
             self.policy = LinearPolicy(policy_params, param_restore)
+        elif policy_params['type'] == 'MLP':
+            self.policy = MLPPolicy(policy_params, param_restore)
+            self.w_policy = self.policy.get_weights()
         else:
             raise NotImplementedError
 
@@ -56,7 +59,6 @@ class Worker(object):
         """
         Get current policy weights and current statistics of past states.
         """
-        assert self.policy_params['type'] == 'linear'
         return self.policy.get_weights_plus_stats()
 
 
@@ -211,6 +213,9 @@ class ARSLearner(object):
         # initialize policy
         if policy_params['type'] == 'linear':
             self.policy = LinearPolicy(policy_params, param_restore)
+            self.w_policy = self.policy.get_weights()
+        elif policy_params['type'] == 'MLP':
+            self.policy = MLPPolicy(policy_params, param_restore)
             self.w_policy = self.policy.get_weights()
         else:
             raise NotImplementedError
@@ -421,27 +426,27 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=200)
-    parser.add_argument('--deltas_used', '-du', type=int, default=72*4+5)
+    parser.add_argument('--n_directions', '-nd', type=int, default=71)
+    parser.add_argument('--deltas_used', '-du', type=int, default=71)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
-    parser.add_argument('--delta_std', '-std', type=float, default=.02)
-    parser.add_argument('--n_workers', '-e', type=int, default=72*4+5)
+    parser.add_argument('--delta_std', '-std', type=float, default=0.01)
+    parser.add_argument('--n_workers', '-e', type=int, default=71)
     parser.add_argument('--rollout_length', '-r', type=int, default=300)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
     # for Hopper-v1, Walker2d-v1, and Ant-v1 use shift = 1
     # for Humanoid-v1 used shift = 5
     parser.add_argument('--shift', type=float, default=0)
-    parser.add_argument('--seed', type=int, default=237)
+    parser.add_argument('--seed', type=int, default=5)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str,
-                        default='/home/medipixel/ARS/log')
+                        default='/home/whikwon/ARS/log')
 
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
     parser.add_argument('--restore', type=str, default=None)
 
-    ray.init("10.0.1.8:8787")
+    ray.init()
 
     args = parser.parse_args()
     params = vars(args)
