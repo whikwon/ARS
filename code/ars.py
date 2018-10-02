@@ -282,12 +282,17 @@ class ARSLearner(object):
         rollout_rewards = np.array(rollout_rewards, dtype = np.float64)
 
         print('Maximum reward of collected rollouts:', rollout_rewards.max())
+        logz.log_tabular("Max reward", rollout_rewards.max())
         t2 = time.time()
 
         print('Time to generate rollouts:', t2 - t1)
+        logz.log_tabular("Time taken", t2 - t1)
 
         if evaluate:
             return rollout_rewards
+
+        logz.log_tabular("timesteps", self.timesteps)
+        logz.dump_tabular()
 
         # select top performing directions if deltas_used < num_deltas
         max_rewards = np.max(rollout_rewards, axis = 1)
