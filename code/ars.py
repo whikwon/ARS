@@ -445,7 +445,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=5)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str,
-                        default='/home/whikwon/ARS/log')
+                        default='/home/medipixel/ARS/log')
 
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
