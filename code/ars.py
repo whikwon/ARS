@@ -98,9 +98,6 @@ class Worker(object):
 
         rollout_rewards, deltas_idx = [], []
         steps = 0
-        rollout_actions = []
-        rollout_obs = []
-        rollout_weights = []
 
         for i in range(num_rollouts):
 
@@ -135,12 +132,9 @@ class Worker(object):
                 steps += pos_steps + neg_steps
 
                 rollout_rewards.append([pos_reward, neg_reward])
-                rollout_actions.append(pos_actions)
-                rollout_obs.append(pos_obs)
 
         return {'deltas_idx': deltas_idx, 'rollout_rewards': rollout_rewards,
-                "steps" : steps, 'rollout_obs': rollout_obs,
-                'rollout_actions': rollout_actions}
+                "steps" : steps}
 
     def stats_increment(self):
         self.policy.observation_filter.stats_increment()
@@ -278,33 +272,24 @@ class ARSLearner(object):
         results_two = ray.get(rollout_ids_two)
 
         rollout_rewards, deltas_idx = [], []
-        rollout_obs = []
-        rollout_actions = []
 
         for result in results_one:
             if not evaluate:
                 self.timesteps += result["steps"]
             deltas_idx += result['deltas_idx']
             rollout_rewards += result['rollout_rewards']
-            rollout_obs += result['rollout_obs']
-            rollout_actions += result['rollout_actions']
-
 
         for result in results_two:
             if not evaluate:
                 self.timesteps += result["steps"]
             deltas_idx += result['deltas_idx']
             rollout_rewards += result['rollout_rewards']
-            rollout_obs += result['rollout_obs']
-            rollout_actions += result['rollout_actions']
 
         deltas_idx = np.array(deltas_idx)
         rollout_rewards = np.array(rollout_rewards, dtype = np.float64)
-        rollout_obs = np.array(rollout_obs, dtype=np.float64)
-        rollout_actions = np.array(rollout_actions, dtype=np.float64)
+        print('Maximum reward of collected rollouts:', rollout_rewards.max())
 
-        print('Averge reward of collected rollouts:', rollout_rewards.mean())
-        logz.log_tabular("Avg reward", rollout_rewards.mean())
+        logz.log_tabular("Maximum reward", rollout_rewards.max())
         t2 = time.time()
 
         print('Time to generate rollouts:', t2 - t1)
@@ -337,7 +322,7 @@ class ARSLearner(object):
         g_hat /= deltas_idx.size
         t2 = time.time()
         print('time to aggregate rollouts', t2 - t1)
-        return g_hat, rollout_actions, rollout_obs
+        return g_hat
 
     def save(self, i):
         """
@@ -346,47 +331,27 @@ class ARSLearner(object):
         w = self.policy.get_weights()
         f = self.policy.observation_filter
 
-        np.save(self.logdir + f'/params_{i}', [w, f], allow_pickle=True)
+        np.save(self.logdir + f'/params_{i}', [w, f],
+                allow_pickle=True)
         return
 
     def restore(self, file_path):
         return np.load(file_path)
 
-    def train_step(self, i):
+    def train_step(self):
         """
         Perform one update step of the policy weights.
         """
 
-        g_hat, rollout_actions, rollout_obs = self.aggregate_rollouts()
+        g_hat = self.aggregate_rollouts()
         print("Euclidean norm of update step:", np.linalg.norm(g_hat))
         self.w_policy -= self.optimizer._compute_step(g_hat).reshape(self.w_policy.shape)
-
-        # save trajectories
-        save_dir = '/home/whikwon/Documents/ARS/traj/'
-
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-
-        np.save(os.path.join(save_dir, f'obs_{i}.npy'), rollout_obs)
-        np.save(os.path.join(save_dir, f'actions_{i}.npy'), rollout_actions)
         return
 
     def train(self, num_iter):
 
         start = time.time()
         for i in range(self.resume_iter, self.resume_iter+num_iter):
-            t1 = time.time()
-            self.train_step(i)
-            t2 = time.time()
-            print('total time of one step', t2 - t1)
-            print('iter ', i,' done')
-
-            # get statistics from all workers
-            t1 = time.time()
-            for j in range(self.num_workers):
-                self.policy.observation_filter.update(ray.get(self.workers[j].get_filter.remote()))
-            self.policy.observation_filter.stats_increment()
-
             # make sure master filter buffer is clear
             self.policy.observation_filter.clear_buffer()
 
@@ -399,23 +364,23 @@ class ARSLearner(object):
             increment_filters_ids = [worker.stats_increment.remote() for worker in self.workers]
             # waiting for increment of all workers
             ray.get(increment_filters_ids)
+
+            t1 = time.time()
+            self.train_step()
             t2 = time.time()
-            print('Time to sync statistics:', t2 - t1)
+
+            print('total time of one step', t2 - t1)
+            print('iter ', i,' done')
+
+            # get statistics from all workers
+            for j in range(self.num_workers):
+                self.policy.observation_filter.update(ray.get(self.workers[j].get_filter.remote()))
+            self.policy.observation_filter.stats_increment()
 
             # record statistics every 10 iterations
-            if ((i + 1) % 10 == 0):
-#                rewards = self.aggregate_rollouts(num_rollouts = 100, evaluate = True)
+            if ((i + 1) % 1 == 0):
                 self.save(i+1)
 
-#                print(sorted(self.params.items()))
-#                logz.log_tabular("Time", time.time() - start)
-#                logz.log_tabular("Iteration", i + 1)
-#                logz.log_tabular("AverageReward", np.mean(rewards))
-#                logz.log_tabular("StdRewards", np.std(rewards))
-#                logz.log_tabular("MaxRewardRollout", np.max(rewards))
-#                logz.log_tabular("MinRewardRollout", np.min(rewards))
-#                logz.log_tabular("timesteps", self.timesteps)
-#                logz.dump_tabular()
         return
 
 def run_ars(params):
@@ -462,28 +427,27 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=1)
-    parser.add_argument('--deltas_used', '-du', type=int, default=1)
+    parser.add_argument('--n_directions', '-nd', type=int, default=71)
+    parser.add_argument('--deltas_used', '-du', type=int, default=71)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
-    parser.add_argument('--delta_std', '-std', type=float, default=0.01)
-    parser.add_argument('--n_workers', '-e', type=int, default=1)
+    parser.add_argument('--delta_std', '-std', type=float, default=0.075)
+    parser.add_argument('--n_workers', '-e', type=int, default=71)
     parser.add_argument('--rollout_length', '-r', type=int, default=300)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
     # for Hopper-v1, Walker2d-v1, and Ant-v1 use shift = 1
     # for Humanoid-v1 used shift = 5
     parser.add_argument('--shift', type=float, default=0)
-    parser.add_argument('--seed', type=int, default=92)
+    parser.add_argument('--seed', type=int, default=100)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str,
-                        default='/home/whikwon/Documents/ARS')
+                        default='/home/medipixel/ARS')
 
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
-    parser.add_argument('--restore', type=str,
-                        default='/home/whikwon/Downloads/params_720.npy')
+    parser.add_argument('--restore', type=str, default=None)
 
-    ray.init("192.168.0.110:8787")
+    ray.init()
 
     args = parser.parse_args()
     params = vars(args)
