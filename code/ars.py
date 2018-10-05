@@ -313,11 +313,6 @@ class ARSLearner(object):
             self.max_reward = max_reward
             max_w = rollout_weights[max_idx]
             max_f = rollout_filters[max_idx]
-            print('+'*100)
-            print(max_w)
-            print(max_reward)
-            print(max_f.rs.mean, max_f.rs.std)
-            print('+'*100)
             np.save(self.logdir + f'/max_params_{self.curr_iter}',
                     [max_w, max_f], allow_pickle=True)
 
@@ -439,7 +434,6 @@ def run_ars(params):
                      restore=params['restore'])
 
     ARS.train(params['n_iter'])
-
     return
 
 
@@ -448,11 +442,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=2)
-    parser.add_argument('--deltas_used', '-du', type=int, default=2)
+    parser.add_argument('--n_directions', '-nd', type=int, default=71)
+    parser.add_argument('--deltas_used', '-du', type=int, default=71)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
     parser.add_argument('--delta_std', '-std', type=float, default=0.075)
-    parser.add_argument('--n_workers', '-e', type=int, default=2)
+    parser.add_argument('--n_workers', '-e', type=int, default=71)
     parser.add_argument('--rollout_length', '-r', type=int, default=300)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
@@ -462,7 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=100)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str,
-                        default='/home/whikwon/Documents/ARS/log')
+                        default='/home/medipixel/ARS/log')
 
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
