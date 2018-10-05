@@ -137,10 +137,14 @@ class Worker(object):
                 rollout_rewards.append([pos_reward, neg_reward])
                 rollout_filters.extend([pos_filter, neg_filter])
                 rollout_weights.extend([w_policy + delta, w_policy - delta])
+                rollout_actions.extend([pos_actions, neg_actions])
+                rollout_obs.extend([pos_obs, neg_obs])
 
         return {'deltas_idx': deltas_idx, 'rollout_rewards': rollout_rewards,
                 "steps" : steps, 'rollout_filters': rollout_filters,
-                'rollout_weights': rollout_weights}
+                'rollout_weights': rollout_weights,
+                'rollout_actions': rollout_actions,
+                'rollout_obs': rollout_obs}
 
     def stats_increment(self):
         self.policy.observation_filter.stats_increment()
@@ -280,7 +284,8 @@ class ARSLearner(object):
         results_two = ray.get(rollout_ids_two)
 
         rollout_rewards, deltas_idx, \
-            rollout_filters, rollout_weights = [], [], [], []
+            rollout_filters, rollout_weights, \
+            rollout_actions, rollout_obs = [], [], [], [], [], []
 
         for result in results_one:
             if not evaluate:
@@ -289,6 +294,8 @@ class ARSLearner(object):
             rollout_rewards += result['rollout_rewards']
             rollout_filters.extend(result['rollout_filters'])
             rollout_weights.extend(result['rollout_weights'])
+            rollout_actions.extend(result['rollout_actions'])
+            rollout_obs.extend(result['rollout_obs'])
 
         for result in results_two:
             if not evaluate:
@@ -296,6 +303,9 @@ class ARSLearner(object):
             deltas_idx += result['deltas_idx']
             rollout_rewards += result['rollout_rewards']
             rollout_filters.extend(result['rollout_filters'])
+            rollout_weights.extend(result['rollout_weights'])
+            rollout_actions.extend(result['rollout_actions'])
+            rollout_obs.extend(result['rollout_obs'])
 
         deltas_idx = np.array(deltas_idx)
         rollout_rewards = np.array(rollout_rewards, dtype = np.float64)
@@ -317,16 +327,18 @@ class ARSLearner(object):
             self.max_reward = max_reward
             max_w = rollout_weights[max_idx]
             max_f = rollout_filters[max_idx]
-            print('+'*100)
-            print(max_w)
-            print(max_reward)
-            print(max_f.rs.mean, max_f.rs.std)
-            print('+'*100)
             np.save(self.logdir + f'/max_params_{self.curr_iter}',
                     [max_w, max_f], allow_pickle=True)
 
         if self.deltas_used > self.num_deltas:
             self.deltas_used = self.num_deltas
+
+        # save rollout actions, obs
+        num_obs = len(rollout_obs)
+        for i in num_obs:
+            np.save(self.logdir + f'/obs_{self.curr_iter}_{i}', rollout_obs[i])
+            np.save(self.logdir + f'/actions_{self.curr_iter}_{i}',
+                    rollout_actions[i])
 
         idx = np.arange(max_rewards.size)[max_rewards >= np.percentile(max_rewards, 100*(1 - (self.deltas_used / self.num_deltas)))]
         deltas_idx = deltas_idx[idx]
