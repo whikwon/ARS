@@ -97,7 +97,8 @@ class Worker(object):
         """
 
         rollout_rewards, rollout_weights, \
-            rollout_filters, deltas_idx = [], [], [], []
+            rollout_filters, deltas_idx, \
+            rollout_actions, rollout_obs = [], [], [], [], [], []
         steps = 0
 
         for i in range(num_rollouts):
@@ -335,7 +336,7 @@ class ARSLearner(object):
 
         # save rollout actions, obs
         num_obs = len(rollout_obs)
-        for i in num_obs:
+        for i in range(num_obs):
             np.save(self.logdir + f'/obs_{self.curr_iter}_{i}', rollout_obs[i])
             np.save(self.logdir + f'/actions_{self.curr_iter}_{i}',
                     rollout_actions[i])
