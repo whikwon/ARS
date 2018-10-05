@@ -291,6 +291,7 @@ class ARSLearner(object):
             deltas_idx += result['deltas_idx']
             rollout_rewards += result['rollout_rewards']
             rollout_filters.extend(result['rollout_filters'])
+            rollout_weights.extend(result['rollout_weights'])
 
         deltas_idx = np.array(deltas_idx)
         rollout_rewards = np.array(rollout_rewards, dtype = np.float64)
