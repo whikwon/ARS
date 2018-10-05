@@ -73,23 +73,18 @@ class Worker(object):
 
         total_reward = 0.
         steps = 0
-        obs = []
-        actions = []
 
         ob = self.env.reset()
         for i in range(rollout_length):
             action = self.policy.act(ob)
             ob, reward, done, _ = self.env.step(action)
 
-            obs.append(ob)
-            actions.append(action)
-
             steps += 1
             total_reward += (reward - shift)
             if done:
                 break
 
-        return total_reward, steps, obs, actions
+        return total_reward, steps
 
     def do_rollouts(self, w_policy, num_rollouts = 1, shift = 1, evaluate = False):
         """
@@ -111,7 +106,7 @@ class Worker(object):
 
                 # for evaluation we do not shift the rewards (shift = 0) and we use the
                 # default rollout length (1000 for the MuJoCo locomotion tasks)
-                reward, r_steps, obs, actions = self.rollout(shift = 0., rollout_length = self.env.spec.timestep_limit)
+                reward, r_steps = self.rollout(shift = 0., rollout_length = self.env.spec.timestep_limit)
                 rollout_rewards.append(reward)
 
             else:
@@ -126,12 +121,12 @@ class Worker(object):
                 # compute reward and number of timesteps used for positive perturbation rollout
                 self.policy.update_weights(w_policy + delta)
                 pos_filter = self.get_filter()
-                pos_reward, pos_steps, pos_obs, pos_actions  = self.rollout(shift = shift)
+                pos_reward, pos_steps = self.rollout(shift = shift)
 
                 # compute reward and number of timesteps used for negative pertubation rollout
                 self.policy.update_weights(w_policy - delta)
                 neg_filter = self.get_filter()
-                neg_reward, neg_steps, neg_obs, neg_actions = self.rollout(shift = shift)
+                neg_reward, neg_steps = self.rollout(shift = shift)
                 steps += pos_steps + neg_steps
 
                 rollout_rewards.append([pos_reward, neg_reward])
