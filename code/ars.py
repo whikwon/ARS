@@ -96,7 +96,8 @@ class Worker(object):
         Generate multiple rollouts with a policy parametrized by w_policy.
         """
 
-        rollout_rewards, deltas_idx = [], []
+        rollout_rewards, rollout_weights,
+            rollout_filters, deltas_idx = [], [], [], []
         steps = 0
 
         for i in range(num_rollouts):
@@ -124,17 +125,22 @@ class Worker(object):
 
                 # compute reward and number of timesteps used for positive perturbation rollout
                 self.policy.update_weights(w_policy + delta)
+                pos_filter = self.policy.get_observation_filter()
                 pos_reward, pos_steps, pos_obs, pos_actions  = self.rollout(shift = shift)
 
                 # compute reward and number of timesteps used for negative pertubation rollout
                 self.policy.update_weights(w_policy - delta)
+                neg_filter = self.policy.get_observation_filter()
                 neg_reward, neg_steps, neg_obs, neg_actions = self.rollout(shift = shift)
                 steps += pos_steps + neg_steps
 
                 rollout_rewards.append([pos_reward, neg_reward])
+                rollout_filters.append([pos_filter, neg_filter])
+                rollout_weights.append([w_policy + delta, w_policy - delta])
 
         return {'deltas_idx': deltas_idx, 'rollout_rewards': rollout_rewards,
-                "steps" : steps}
+                "steps" : steps, 'rollout_filters': rollout_filters,
+                'rollout_weights': rollout_weights}
 
     def stats_increment(self):
         self.policy.observation_filter.stats_increment()
@@ -179,11 +185,12 @@ class ARSLearner(object):
         env = ProstheticsEnv(False, 1e-3)
         if restore is not None:
             param_restore = self.restore(restore)
-            self.resume_iter = int(re.search('\d+', restore).group())
+            self.curr_iter = int(re.search('\d+', restore).group())
         else:
             param_restore = None
-            self.resume_iter = 0
+            self.curr_iter = 0
 
+        self.max_reward = 0
         self.timesteps = 0
         self.action_size = env.action_space.shape[0]
         self.ob_size = env.observation_space.shape[0]
@@ -230,7 +237,7 @@ class ARSLearner(object):
         # adjust shared table
         if restore is not None:
             remove_idx = []
-            for _ in range(self.resume_iter):
+            for _ in range(self.curr_iter):
                 for worker in self.workers:
                     idx, _ = ray.get(worker.get_delta.remote())
                     remove_idx.append(idx)
@@ -287,6 +294,7 @@ class ARSLearner(object):
 
         deltas_idx = np.array(deltas_idx)
         rollout_rewards = np.array(rollout_rewards, dtype = np.float64)
+        max_idx = np.argmax(rollout_rewards)
         print('Maximum reward of collected rollouts:', rollout_rewards.max())
 
         logz.log_tabular("Maximum reward", rollout_rewards.max())
@@ -302,9 +310,18 @@ class ARSLearner(object):
         logz.dump_tabular()
 
         # select top performing directions if deltas_used < num_deltas
-        max_rewards = np.max(rollout_rewards, axis = 1)
+        max_rewards = rollout_rewards[max_idx]
+        if max_rewards > self.max_reward:
+            self.max_reward = max_rewards
+            max_w = rollout_weights[max_idx]
+            max_f = rollout_filters[max_idx]
+
+            np.save(self.logdir + f'/max_params_{self.curr_iter}',
+                    [w, f], allow_pickle=True)
+
         if self.deltas_used > self.num_deltas:
             self.deltas_used = self.num_deltas
+
 
         idx = np.arange(max_rewards.size)[max_rewards >= np.percentile(max_rewards, 100*(1 - (self.deltas_used / self.num_deltas)))]
         deltas_idx = deltas_idx[idx]
@@ -351,7 +368,7 @@ class ARSLearner(object):
     def train(self, num_iter):
 
         start = time.time()
-        for i in range(self.resume_iter, self.resume_iter+num_iter):
+        for i in range(self.curr_iter, self.curr_iter+num_iter):
             # make sure master filter buffer is clear
             self.policy.observation_filter.clear_buffer()
 
