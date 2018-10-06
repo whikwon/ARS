@@ -8,6 +8,7 @@ Benjamin Recht
 import parser
 import time
 import os
+import copy
 import re
 import numpy as np
 import gym
@@ -120,12 +121,12 @@ class Worker(object):
 
                 # compute reward and number of timesteps used for positive perturbation rollout
                 self.policy.update_weights(w_policy + delta)
-                pos_filter = self.get_filter()
+                pos_filter = self.copy_filter()
                 pos_reward, pos_steps = self.rollout(shift = shift)
 
                 # compute reward and number of timesteps used for negative pertubation rollout
                 self.policy.update_weights(w_policy - delta)
-                neg_filter = self.get_filter()
+                neg_filter = self.copy_filter()
                 neg_reward, neg_steps = self.rollout(shift = shift)
                 steps += pos_steps + neg_steps
 
@@ -140,6 +141,9 @@ class Worker(object):
     def stats_increment(self):
         self.policy.observation_filter.stats_increment()
         return
+
+    def copy_filter(self):
+        return copy.deepcopy(self.get_filter())
 
     def get_weights(self):
         return self.policy.get_weights()
@@ -309,12 +313,17 @@ class ARSLearner(object):
         max_reward = rollout_rewards[np.unravel_index(max_idx,
                                                       rollout_rewards.shape)]
         max_rewards = np.max(rollout_rewards, axis=1)
-        if max_reward > self.max_reward:
-            self.max_reward = max_reward
-            max_w = rollout_weights[max_idx]
-            max_f = rollout_filters[max_idx]
-            np.save(self.logdir + f'/max_params_{self.curr_iter}',
-                    [max_w, max_f], allow_pickle=True)
+#        if max_reward > self.max_reward:
+        self.max_reward = max_reward
+        max_w = rollout_weights[max_idx]
+        max_f = rollout_filters[max_idx]
+        print('+'*100)
+        print(max_reward)
+        print(max_w)
+        print(max_f.rs.mean, max_f.rs.std)
+        print('+'*100)
+        np.save(self.logdir + f'/max_params_{self.curr_iter}',
+                [max_w, max_f], allow_pickle=True)
 
         if self.deltas_used > self.num_deltas:
             self.deltas_used = self.num_deltas
@@ -442,11 +451,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=71)
-    parser.add_argument('--deltas_used', '-du', type=int, default=71)
+    parser.add_argument('--n_directions', '-nd', type=int, default=7)
+    parser.add_argument('--deltas_used', '-du', type=int, default=7)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
     parser.add_argument('--delta_std', '-std', type=float, default=0.075)
-    parser.add_argument('--n_workers', '-e', type=int, default=71)
+    parser.add_argument('--n_workers', '-e', type=int, default=7)
     parser.add_argument('--rollout_length', '-r', type=int, default=300)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
@@ -456,7 +465,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=100)
     parser.add_argument('--policy_type', type=str, default='linear')
     parser.add_argument('--dir_path', type=str,
-                        default='/home/medipixel/ARS/log')
+                        default='/home/whikwon/Documents/ARS/log')
 
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
