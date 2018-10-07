@@ -38,7 +38,7 @@ class Worker(object):
                  param_restore=None):
 
         # initialize OpenAI environment for each worker
-        self.env = ProstheticsEnv(False, 1e-3, seed=env_seed)
+        self.env = ProstheticsEnv(False, 1e-3, env_round, env_seed)
 
         # each worker gets access to the shared noise table
         # with independent random streams for sampling
