@@ -149,7 +149,7 @@ class Worker(object):
         return self.policy.get_weights()
 
     def get_filter(self):
-        return self.policy.observation_filter
+        return self.policy.get_observation_filter()
 
     def sync_filter(self, other):
         self.policy.observation_filter.sync(other)
@@ -318,12 +318,12 @@ class ARSLearner(object):
         max_w = rollout_weights[max_idx]
         max_f = rollout_filters[max_idx]
         print('+'*100)
-        print(max_reward)
-        print(max_w)
-        print(max_f.rs.mean, max_f.rs.std)
+        print(rollout_rewards)
+        print(max_idx)
         print('+'*100)
-        np.save(self.logdir + f'/max_params_{self.curr_iter}',
-                [max_w, max_f], allow_pickle=True)
+        for i in range(len(rollout_weights)):
+            np.save(self.logdir + f'/max_params_{self.curr_iter}_{i}',
+                    [rollout_weights[i], rollout_filters[i]], allow_pickle=True)
 
         if self.deltas_used > self.num_deltas:
             self.deltas_used = self.num_deltas
