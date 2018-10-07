@@ -29,6 +29,7 @@ class Worker(object):
 
     def __init__(self,
                  env_seed,
+                 env_round,
                  env_name='',
                  policy_params=None,
                  deltas=None,
@@ -176,12 +177,13 @@ class ARSLearner(object):
                  shift='constant zero',
                  params=None,
                  seed=123,
+                 env_round=1,
                  restore=None):
 
         logz.configure_output_dir(logdir)
         logz.save_params(params)
 
-        env = ProstheticsEnv(False, 1e-3)
+        env = ProstheticsEnv(False, 1e-3, env_round)
         if restore is not None:
             param_restore = self.restore(restore)
             self.curr_iter = int(re.search('\d+', restore).group())
@@ -217,6 +219,7 @@ class ARSLearner(object):
         self.num_workers = num_workers
         self.workers = [Worker.remote(seed + 7 * i,
                                       env_name=env_name,
+                                      env_round=env_round,
                                       policy_params=policy_params,
                                       deltas=deltas_id,
                                       rollout_length=rollout_length,
@@ -413,7 +416,8 @@ def run_ars(params):
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
 
-    env = ProstheticsEnv(False, 1e-3)
+    env_round = params['env_round']
+    env = ProstheticsEnv(False, 1e-3, env_round)
     ob_dim = env.observation_space.shape[0]
     ac_dim = env.action_space.shape[0]
 
@@ -435,6 +439,7 @@ def run_ars(params):
                      shift=params['shift'],
                      params=params,
                      seed=params['seed'],
+                     env_round=params['env_round'],
                      restore=params['restore'])
 
     ARS.train(params['n_iter'])
@@ -451,7 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
     parser.add_argument('--delta_std', '-std', type=float, default=0.0075)
     parser.add_argument('--n_workers', '-e', type=int, default=71)
-    parser.add_argument('--rollout_length', '-r', type=int, default=300)
+    parser.add_argument('--rollout_length', '-r', type=int, default=1000)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
     # for Hopper-v1, Walker2d-v1, and Ant-v1 use shift = 1
@@ -465,6 +470,7 @@ if __name__ == '__main__':
     # for ARS V1 use filter = 'NoFilter'
     parser.add_argument('--filter', type=str, default='MeanStdFilter')
     parser.add_argument('--restore', type=str, default=None)
+    parser.add_argument('--env_round', type=int, default=1)
 
     ray.init()
 
