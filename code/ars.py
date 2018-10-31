@@ -451,11 +451,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_name', type=str, default='HalfCheetah-v1')
     parser.add_argument('--n_iter', '-n', type=int, default=1000000)
-    parser.add_argument('--n_directions', '-nd', type=int, default=71)
-    parser.add_argument('--deltas_used', '-du', type=int, default=71)
+    parser.add_argument('--n_directions', '-nd', type=int, default=72*4-1)
+    parser.add_argument('--deltas_used', '-du', type=int, default=72*4-1)
     parser.add_argument('--step_size', '-s', type=float, default=0.02)
     parser.add_argument('--delta_std', '-std', type=float, default=0.0075)
-    parser.add_argument('--n_workers', '-e', type=int, default=71)
+    parser.add_argument('--n_workers', '-e', type=int, default=72*4-1)
     parser.add_argument('--rollout_length', '-r', type=int, default=1000)
 
     # for Swimmer-v1 and HalfCheetah-v1 use shift = 0
